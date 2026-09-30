@@ -32,7 +32,7 @@
     color: var(--text);
     font-size: 17px;
     line-height: 1.45;
-    padding-bottom: 140px; /* ruang untuk keypad */
+    padding-bottom: 24px;
   }
   header {
     position: sticky; top: 0; z-index: 10;
@@ -72,10 +72,15 @@
   }
   input[type="text"]:focus { outline: none; border-color: var(--accent); }
 
-  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .angle-row {
+    display: grid;
+    grid-template-columns: 82px 82px minmax(90px, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
   .cell { display: flex; flex-direction: column; gap: 4px; }
   .cell .cap { font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; }
-  .cell input {
+  .cell input[type="text"] {
     width: 100%;
     min-height: 64px;
     font-size: 24px;
@@ -87,11 +92,48 @@
     color: var(--text);
     font-variant-numeric: tabular-nums;
   }
-  .cell input.active {
-    border: 3px solid var(--accent);
-    background: var(--accent-soft);
+  .cell input[type="text"]:focus { outline: none; border-color: var(--accent); }
+  .cell input[type="text"].invalid { border-color: var(--err); background: var(--err-bg); }
+  .angle-cell input[type="text"] { min-height: 44px; padding: 6px 3px; font-size: 18px; }
+  .wheel {
+    height: 108px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+    position: relative;
+    border-radius: 8px;
+    background: #f4f6f8;
+    mask-image: linear-gradient(to bottom, transparent, #000 24%, #000 76%, transparent);
   }
-  .cell input.invalid { border-color: var(--err); background: var(--err-bg); }
+  .wheel::-webkit-scrollbar { display: none; }
+  .wheel::after {
+    content: "";
+    position: absolute;
+    top: 36px;
+    left: 0;
+    right: 0;
+    height: 36px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: rgba(11, 95, 255, .06);
+    pointer-events: none;
+  }
+  .wheel-spacer, .wheel-option { height: 36px; }
+  .wheel-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    scroll-snap-align: start;
+    color: var(--muted);
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  .wheel-option.selected { color: var(--accent); font-size: 19px; font-weight: 700; }
+  .distance-cell { width: 100%; margin: 12px auto 0; }
+  @media (max-width: 380px) {
+    .angle-row { grid-template-columns: 72px 72px minmax(80px, 1fr); gap: 6px; }
+  }
 
   .err-msg { color: var(--err); font-size: 14px; font-weight: 600; margin-top: 8px; min-height: 20px; }
 
@@ -119,39 +161,24 @@
   }
   .chip:active { background: var(--accent-soft); }
 
-  /* ===== Keypad kustom ===== */
-  #keypad {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
-    z-index: 20;
-    background: #101418;
-    padding: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 10px);
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    box-shadow: 0 -4px 16px rgba(0,0,0,.25);
-  }
-  #keypad.hidden { display: none; }
-  .key {
-    min-height: 60px;
-    font-size: 24px;
-    font-weight: 600;
-    border: none;
-    border-radius: 12px;
-    background: #2a3138;
+  .save-entry {
+    width: 100%;
+    min-height: 52px;
+    margin-top: 12px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--ok);
     color: #fff;
+    font-size: 17px;
+    font-weight: 700;
   }
-  .key:active { background: #3d4650; }
-  .key.util { background: #4a5560; font-size: 18px; }
-  .key.next { background: var(--accent); grid-column: span 2; }
-  .key.save { background: var(--ok); grid-column: span 2; }
-  .key:disabled { background: #333a40; color: #777; }
+  .save-entry:disabled { background: #aab3bb; color: #f5f6f7; }
 
   /* ===== Toast ===== */
   #toast {
     position: fixed;
     left: 50%;
-    bottom: 170px;
+    bottom: 20px;
     transform: translateX(-50%) translateY(20px);
     z-index: 30;
     padding: 14px 22px;
@@ -212,28 +239,31 @@
     <div class="chips" id="chips" aria-label="Tombol cepat keterangan"></div>
 
     <label class="field-label">Sudut <span class="hint">(derajat / menit / detik)</span></label>
-    <div class="grid4">
-      <div class="cell">
-        <input id="d" inputmode="none" readonly aria-label="Derajat">
+    <div class="angle-row">
+      <div class="cell angle-cell">
+        <input id="d" type="text" inputmode="numeric" autocomplete="off" aria-label="Derajat" placeholder="0">
+        <div id="dWheel" class="wheel" role="listbox" tabindex="0" aria-label="Roda derajat"></div>
         <span class="cap">Derajat</span>
       </div>
-      <div class="cell">
-        <input id="m" inputmode="none" readonly aria-label="Menit">
+      <div class="cell angle-cell">
+        <input id="m" type="text" inputmode="numeric" autocomplete="off" aria-label="Menit" placeholder="0">
+        <div id="mWheel" class="wheel" role="listbox" tabindex="0" aria-label="Roda menit"></div>
         <span class="cap">Menit</span>
       </div>
       <div class="cell">
-        <input id="s" inputmode="none" readonly aria-label="Detik">
+        <input id="s" type="text" inputmode="decimal" autocomplete="off" aria-label="Detik" placeholder="0.00">
         <span class="cap">Detik</span>
       </div>
-      <div class="cell">
-        <input id="jarak" inputmode="none" readonly aria-label="Jarak dalam meter">
-        <span class="cap">Jarak (m)</span>
-      </div>
+    </div>
+    <div class="cell distance-cell">
+      <input id="jarak" type="text" inputmode="decimal" autocomplete="off" aria-label="Jarak dalam meter" placeholder="0.00">
+      <span class="cap">Jarak (m)</span>
     </div>
 
     <div class="err-msg" id="errMsg" role="alert"></div>
 
     <div class="preview" id="preview">0° 0' 0" &nbsp;·&nbsp; <span class="dec">0.000000</span></div>
+    <button class="save-entry" id="saveButton" type="button" disabled>Simpan Data</button>
   </section>
 
   <!-- ===== Riwayat ===== -->
@@ -243,9 +273,6 @@
     <p class="empty" id="historyEmpty">Belum ada data.</p>
   </section>
 </main>
-
-<!-- ===== Keypad kustom ===== -->
-<div id="keypad" class="hidden" aria-label="Keypad angka"></div>
 
 <!-- ===== Toast ===== -->
 <div id="toast" role="status"></div>
@@ -258,17 +285,17 @@ const API_URL = "https://script.google.com/macros/s/AKfycbywu7pHXzfFJz8xwvbiAm5U
 
 /* ================= STATE ================= */
 const COLS = ["d", "m", "s", "jarak"];
-const COL_LABEL = { d: "Derajat", m: "Menit", s: "Detik", jarak: "Jarak" };
-let activeCol = null;          // kolom yang sedang diisi keypad
+const CHIP_KEY = "ukur.chips";
+const CHIP_DEFAULT = ["Patok", "Batas", "Sudut", "Tanah"];
 let chipList = loadChips();
 
 const $ = (id) => document.getElementById(id);
 const inputs = { d: $("d"), m: $("m"), s: $("s"), jarak: $("jarak") };
+const wheels = { d: $("dWheel"), m: $("mWheel") };
+const WHEEL_ROW_HEIGHT = 36;
+const wheelTimers = {};
 
 /* ================= CHIP CEPAT ================= */
-const CHIP_KEY = "ukur.chips";
-const CHIP_DEFAULT = ["Patok", "Batas", "Sudut", "Tanah"];
-
 function loadChips() {
   try {
     const raw = localStorage.getItem(CHIP_KEY);
@@ -305,99 +332,62 @@ function renderChips() {
   box.appendChild(add);
 }
 
-/* ================= KEYPAD ================= */
-const keypad = $("keypad");
-
-function buildKeypad() {
-  const keys = [
-    { t: "1", v: "1" }, { t: "2", v: "2" }, { t: "3", v: "3" },
-    { t: "C", v: "C", cls: "util" },
-    { t: "4", v: "4" }, { t: "5", v: "5" }, { t: "6", v: "6" },
-    { t: "⌫", v: "B", cls: "util" },
-    { t: "7", v: "7" }, { t: "8", v: "8" }, { t: "9", v: "9" },
-    { t: ".", v: ".", cls: "util" },
-    { t: "0", v: "0" }, { t: "00", v: "00" },
-  ];
-  keypad.innerHTML = "";
-  keys.forEach((k) => {
-    const b = document.createElement("button");
-    b.className = "key" + (k.cls ? " " + k.cls : "");
-    b.type = "button";
-    b.textContent = k.t;
-    b.dataset.val = k.v;
-    b.addEventListener("click", () => onKey(k.v));
-    keypad.appendChild(b);
+/* ================= INPUT ANGKA & RODA GULIR ================= */
+function updateWheelSelection(col, selectedIndex) {
+  [...wheels[col].querySelectorAll(".wheel-option")].forEach((option, index) => {
+    const selected = index === selectedIndex;
+    option.classList.toggle("selected", selected);
+    option.setAttribute("aria-selected", String(selected));
   });
-  // Tombol Lanjut / Simpan
-  const next = document.createElement("button");
-  next.className = "key next";
-  next.type = "button";
-  next.id = "keyNext";
-  next.addEventListener("click", onNext);
-  keypad.appendChild(next);
-  updateNextButton();
 }
 
-function updateNextButton() {
-  const b = $("keyNext");
-  if (!b) return;
-  if (activeCol === "jarak") {
-    b.textContent = "Simpan";
-    b.className = "key save";
-    b.disabled = !formValid();
-  } else {
-    b.textContent = "Lanjut ▶";
-    b.className = "key next";
-    b.disabled = false;
-  }
+function setWheelPosition(col, value) {
+  const max = col === "d" ? 360 : 59;
+  const index = Math.max(0, Math.min(max, Math.round(value)));
+  wheels[col].scrollTop = index * WHEEL_ROW_HEIGHT;
+  updateWheelSelection(col, index);
 }
 
-function onKey(v) {
-  if (!activeCol) return;
-  const inp = inputs[activeCol];
-  let val = inp.value;
-
-  if (v === "C") {
-    val = "";
-  } else if (v === "B") {
-    val = val.slice(0, -1);
-  } else if (v === ".") {
-    if (!val.includes(".")) val = val === "" ? "0." : val + ".";
-  } else if (v === "00") {
-    if (val === "" || val === "0") val = "0";
-    else val += "00";
-  } else {
-    // batasi panjang masukkan
-    if (val.replace(/[^0-9]/g, "").length >= 9) return;
-    if (val === "0") val = v;
-    else val += v;
-  }
-  inp.value = val;
+function selectWheelValue(col) {
+  const max = col === "d" ? 360 : 59;
+  const index = Math.max(0, Math.min(max, Math.round(wheels[col].scrollTop / WHEEL_ROW_HEIGHT)));
+  inputs[col].value = String(index);
+  updateWheelSelection(col, index);
   validate();
 }
 
-function onNext() {
-  if (!activeCol) { setActiveCol("d"); return; }
-  const i = COLS.indexOf(activeCol);
-  if (i < COLS.length - 1) {
-    setActiveCol(COLS[i + 1]);
-  } else {
-    saveEntry();
+function renderWheels() {
+  Object.keys(wheels).forEach((col) => {
+    const wheel = wheels[col];
+    const max = col === "d" ? 360 : 59;
+    const topSpace = document.createElement("div");
+    topSpace.className = "wheel-spacer";
+    topSpace.setAttribute("aria-hidden", "true");
+    wheel.appendChild(topSpace);
+    for (let value = 0; value <= max; value += 1) {
+      const option = document.createElement("div");
+      option.className = "wheel-option";
+      option.setAttribute("role", "option");
+      option.textContent = String(value);
+      wheel.appendChild(option);
+    }
+    const bottomSpace = topSpace.cloneNode();
+    wheel.appendChild(bottomSpace);
+    wheel.addEventListener("scroll", () => {
+      clearTimeout(wheelTimers[col]);
+      wheelTimers[col] = setTimeout(() => selectWheelValue(col), 120);
+    }, { passive: true });
+    setWheelPosition(col, 0);
+  });
+}
+
+COLS.forEach((col) => inputs[col].addEventListener("input", () => {
+  if (wheels[col]) {
+    const value = parseNum(inputs[col].value);
+    setWheelPosition(col, Number.isNaN(value) ? 0 : value);
   }
-}
-
-function setActiveCol(col) {
-  activeCol = col;
-  COLS.forEach((c) => inputs[c].classList.toggle("active", c === col));
-  keypad.classList.toggle("hidden", !col);
-  updateNextButton();
-}
-
-// Klik kolom angka -> buka keypad untuk kolom itu
-COLS.forEach((c) => {
-  inputs[c].addEventListener("focus", (e) => { e.preventDefault(); inputs[c].blur(); setActiveCol(c); });
-  inputs[c].addEventListener("click", () => setActiveCol(c));
-});
+  validate();
+}));
 
 /* ================= VALIDASI & PRATINJAU ================= */
 function parseNum(v) { return v === "" ? NaN : Number(v); }
@@ -421,7 +411,7 @@ function validate() {
 
   $("errMsg").textContent = msg;
   updatePreview();
-  updateNextButton();
+  $("saveButton").disabled = !formValid();
   return msg === "";
 }
 
@@ -551,9 +541,9 @@ async function saveEntry() {
   // Reset form
   $("ket").value = "";
   COLS.forEach((c) => { inputs[c].value = ""; inputs[c].classList.remove("invalid"); });
+  Object.keys(wheels).forEach((c) => setWheelPosition(c, 0));
   $("errMsg").textContent = "";
   updatePreview();
-  setActiveCol(null);
   updateNetBadge();
   $("ket").focus();
 }
@@ -622,10 +612,11 @@ requestWakeLock();
 
 /* ================= INIT ================= */
 renderChips();
-buildKeypad();
+renderWheels();
 renderHistory();
 validate();
 updateNetBadge();
+$("saveButton").addEventListener("click", saveEntry);
 </script>
 </body>
 </html>
