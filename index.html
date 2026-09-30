@@ -171,8 +171,52 @@
     color: #fff;
     font-size: 17px;
     font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    transition: transform .12s ease, background-color .2s ease, box-shadow .2s ease;
+  }
+  .save-entry:active:not(:disabled) { transform: scale(.975); }
+  .save-entry.is-saving { cursor: wait; animation: save-press .32s ease-out; }
+  .save-entry.is-saving::before {
+    content: "";
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,.45);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
   }
   .save-entry:disabled { background: #aab3bb; color: #f5f6f7; }
+  .form-mode {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fff2bf;
+    color: #674700;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .form-mode button {
+    display: block;
+    margin-top: 6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-decoration: underline;
+  }
+  #formCard.editing { --accent: #a96b00; --accent-soft: #fff2bf; }
+  #formCard.editing .save-entry { background: #b77900; color: #fff; }
+  #formCard.editing .wheel::after { background: rgba(183,121,0,.09); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes save-press {
+    0% { transform: scale(1); }
+    40% { transform: scale(.975); }
+    100% { transform: scale(1); }
+  }
 
   /* ===== Toast ===== */
   #toast {
@@ -203,22 +247,43 @@
     border-radius: 12px;
     padding: 10px 12px;
     margin-bottom: 8px;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
   }
   #historyList .info { flex: 1; min-width: 0; }
   #historyList .ket { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #historyList .sub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #historyList .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  #historyList .status.pending { background: #fff2bf; color: #674700; }
+  #historyList .status.sent { background: var(--ok-bg); color: #126532; }
+  #historyList .status.local { background: #e8edf2; color: #46515c; }
+  #historyList .actions { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end; }
   #historyList button {
-    min-height: 44px;
-    padding: 8px 14px;
-    border-radius: 10px;
-    border: 2px solid var(--accent);
+    min-height: 40px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
     background: #fff;
-    color: var(--accent);
+    color: var(--text);
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
+  }
+  #historyList button.edit-action { color: var(--accent); border-color: var(--accent); }
+  #historyList button.delete-action { color: var(--err); border-color: #e8b8b8; }
+  @media (max-width: 420px) {
+    #historyList li { grid-template-columns: minmax(0, 1fr); }
+    #historyList .actions { justify-content: flex-start; }
   }
   .empty { color: var(--muted); font-size: 15px; }
   h2 { font-size: 17px; margin: 0 0 10px; }
@@ -233,7 +298,11 @@
 
 <main>
   <!-- ===== Form ===== -->
-  <section class="card" aria-label="Formulir ukur">
+  <section class="card" id="formCard" aria-label="Formulir ukur">
+    <div class="form-mode" id="formMode" hidden>
+      <span id="formModeText"></span>
+      <button id="cancelEdit" type="button">Batal mengedit</button>
+    </div>
     <label class="field-label" for="ket">Keterangan</label>
     <input type="text" id="ket" placeholder="mis. Patok BM-01" autocomplete="off" enterkeyhint="done">
     <div class="chips" id="chips" aria-label="Tombol cepat keterangan"></div>
@@ -294,6 +363,9 @@ const inputs = { d: $("d"), m: $("m"), s: $("s"), jarak: $("jarak") };
 const wheels = { d: $("dWheel"), m: $("mWheel") };
 const WHEEL_ROW_HEIGHT = 36;
 const wheelTimers = {};
+let currentEditId = null;
+let saving = false;
+let processingQueue = false;
 
 /* ================= CHIP CEPAT ================= */
 function loadChips() {
@@ -411,8 +483,15 @@ function validate() {
 
   $("errMsg").textContent = msg;
   updatePreview();
-  $("saveButton").disabled = !formValid();
+  updateSaveButton();
   return msg === "";
+}
+
+function updateSaveButton() {
+  const button = $("saveButton");
+  button.textContent = saving ? "Menyimpan..." : currentEditId ? "Simpan Perubahan" : "Simpan Data";
+  button.classList.toggle("is-saving", saving);
+  button.disabled = saving || !formValid();
 }
 
 function formValid() {
@@ -448,6 +527,9 @@ function loadJSON(key, fallback) {
   return fallback;
 }
 function saveQueue(q) { try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch (e) { /* abaikan */ } }
+function saveHistory(history) {
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(history.slice(0, 5))); } catch (e) { /* abaikan */ }
+}
 
 function getQueue() { return loadJSON(QUEUE_KEY, []); }
 
@@ -480,29 +562,37 @@ async function kirim(entry) {
 }
 
 async function processQueue() {
-  if (!navigator.onLine) return;
-  let q = getQueue();
-  if (!q.length) return;
-  const gagal = [];
-  for (const entry of q) {
-    try {
-      await kirim(entry);
-    } catch (e) {
-      gagal.push(entry); // tetap di antrean
+  if (!navigator.onLine || processingQueue) return;
+  const queue = getQueue();
+  if (!queue.length) return;
+  processingQueue = true;
+  const terkirim = new Set();
+  try {
+    for (const entry of queue) {
+      try {
+        await kirim(entry);
+        terkirim.add(entry.id);
+      } catch (e) {
+        // Tetap di antrean untuk percobaan berikutnya.
+      }
     }
+    saveQueue(getQueue().filter((entry) => !terkirim.has(entry.id)));
+    updateNetBadge();
+    renderHistory();
+    return { sent: terkirim.size, pending: getQueue().length };
+  } finally {
+    processingQueue = false;
   }
-  saveQueue(gagal);
-  updateNetBadge();
-  if (gagal.length < q.length) toast("Sebagian data terkirim");
 }
 
 async function saveEntry() {
+  if (saving) return;
   if (!formValid()) { validate(); return; }
+  saving = true;
+  updateSaveButton();
   const dN = parseNum(inputs.d.value), mN = parseNum(inputs.m.value),
         sN = parseNum(inputs.s.value), jN = parseNum(inputs.jarak.value);
-  const entry = {
-    id: crypto.randomUUID(),
-    waktu: new Date().toISOString(),
+  const values = {
     keterangan: $("ket").value.trim(),
     derajat: dN,
     menit: mN,
@@ -510,42 +600,103 @@ async function saveEntry() {
     desimal: +(dN + mN / 60 + sN / 3600).toFixed(6),
     jarak: jN,
   };
-
-  let terkirim = false;
-  if (navigator.onLine) {
-    try {
-      await kirim(entry);
-      terkirim = true;
-    } catch (e) {
-      // jatuh ke antrean
+  try {
+    const history = loadJSON(HIST_KEY, []);
+    if (currentEditId) {
+      const index = history.findIndex((entry) => entry.id === currentEditId);
+      if (index === -1) {
+        toast("Data tidak ditemukan", true);
+        cancelEditing();
+        return;
+      }
+      const queue = getQueue();
+      const queueIndex = queue.findIndex((entry) => entry.id === currentEditId);
+      const updated = { ...history[index], ...values, waktu: new Date().toISOString() };
+      if (queueIndex >= 0) {
+        queue[queueIndex] = updated;
+        saveQueue(queue);
+      } else {
+        updated.localEdit = true;
+      }
+      history[index] = updated;
+      saveHistory(history);
+      const editedLabel = updated.keterangan || "(tanpa keterangan)";
+      cancelEditing();
+      resetForm();
+      renderHistory();
+      if (queueIndex >= 0) {
+        if (navigator.onLine) await processQueue();
+        const stillPending = getQueue().some((entry) => entry.id === updated.id);
+        toast(stillPending ? "Edit disimpan, status Pending" : "Edit terkirim");
+      } else {
+        toast("Edit " + editedLabel + " tersimpan di perangkat; data spreadsheet belum berubah");
+      }
+    } else {
+      const entry = { id: crypto.randomUUID(), waktu: new Date().toISOString(), ...values };
+      history.unshift(entry);
+      saveHistory(history);
+      const queue = getQueue();
+      queue.push(entry);
+      saveQueue(queue);
+      resetForm();
+      renderHistory();
+      if (navigator.onLine) await processQueue();
+      const stillPending = getQueue().some((queued) => queued.id === entry.id);
+      toast(stillPending ? "Data Pending, akan dikirim saat tersambung" : "Data terkirim");
     }
+  } finally {
+    saving = false;
+    validate();
   }
+  navigator.vibrate && navigator.vibrate(50);
+  updateNetBadge();
+}
 
-  if (!terkirim) {
-    const q = getQueue();
-    q.push(entry);
-    saveQueue(q);
-    toast("Disimpan di antrean (offline)");
-  } else {
-    toast("Tersimpan");
-  }
-
-  navigator.vibrate && navigator.vibrate(80);
-
-  // Riwayat 5 terakhir
-  const hist = loadJSON(HIST_KEY, []);
-  hist.unshift(entry);
-  try { localStorage.setItem(HIST_KEY, JSON.stringify(hist.slice(0, 5))); } catch (e) { /* abaikan */ }
-  renderHistory();
-
-  // Reset form
+function resetForm() {
   $("ket").value = "";
-  COLS.forEach((c) => { inputs[c].value = ""; inputs[c].classList.remove("invalid"); });
-  Object.keys(wheels).forEach((c) => setWheelPosition(c, 0));
+  COLS.forEach((col) => { inputs[col].value = ""; inputs[col].classList.remove("invalid"); });
+  Object.keys(wheels).forEach((col) => setWheelPosition(col, 0));
   $("errMsg").textContent = "";
   updatePreview();
+}
+
+function cancelEditing() {
+  currentEditId = null;
+  $("formCard").classList.remove("editing");
+  $("formMode").hidden = true;
+  updateSaveButton();
+}
+
+function editEntry(entry) {
+  currentEditId = entry.id;
+  $("formCard").classList.add("editing");
+  $("formMode").hidden = false;
+  $("formModeText").textContent = "Edit data: " + (entry.keterangan || "(tanpa keterangan)");
+  $("ket").value = entry.keterangan || "";
+  inputs.d.value = String(entry.derajat);
+  inputs.m.value = String(entry.menit);
+  inputs.s.value = String(entry.detik);
+  inputs.jarak.value = String(entry.jarak);
+  Object.keys(wheels).forEach((col) => setWheelPosition(col, entry[col]));
+  validate();
+  $("formCard").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function deleteEntry(entry) {
+  const pending = getQueue().some((queued) => queued.id === entry.id);
+  const promptText = pending
+    ? "Hapus data ini dari riwayat dan antrean pengiriman?"
+    : "Hapus dari riwayat perangkat? Data yang sudah terkirim tetap ada di spreadsheet.";
+  if (!confirm(promptText)) return;
+  saveHistory(loadJSON(HIST_KEY, []).filter((item) => item.id !== entry.id));
+  saveQueue(getQueue().filter((item) => item.id !== entry.id));
+  if (currentEditId === entry.id) {
+    cancelEditing();
+    resetForm();
+  }
+  renderHistory();
   updateNetBadge();
-  $("ket").focus();
+  toast(pending ? "Data dihapus dari antrean" : "Riwayat dihapus dari perangkat");
 }
 
 /* ================= RIWAYAT ================= */
@@ -564,12 +715,26 @@ function renderHistory() {
       "<div class=\"sub\">" + az.toFixed(3) + "° · " + h.jarak + " m · " +
       new Date(h.waktu).toLocaleString("id-ID") + "</div>";
     info.querySelector(".ket").textContent = h.keterangan || "(tanpa keterangan)";
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = "Ulangi keterangan";
-    btn.addEventListener("click", () => { $("ket").value = h.keterangan || ""; $("ket").focus(); });
+    const pending = getQueue().some((entry) => entry.id === h.id);
+    const status = document.createElement("span");
+    status.className = "status " + (pending ? "pending" : h.localEdit ? "local" : "sent");
+    status.textContent = pending ? "Pending" : h.localEdit ? "Edit lokal" : "Terkirim";
+    info.appendChild(status);
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "edit-action";
+    editButton.textContent = "Edit";
+    editButton.addEventListener("click", () => editEntry(h));
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "delete-action";
+    deleteButton.textContent = "Hapus";
+    deleteButton.addEventListener("click", () => deleteEntry(h));
+    actions.append(editButton, deleteButton);
     li.appendChild(info);
-    li.appendChild(btn);
+    li.appendChild(actions);
     ul.appendChild(li);
   });
 }
@@ -617,6 +782,7 @@ renderHistory();
 validate();
 updateNetBadge();
 $("saveButton").addEventListener("click", saveEntry);
+$("cancelEdit").addEventListener("click", () => { cancelEditing(); resetForm(); validate(); });
 </script>
 </body>
 </html>
