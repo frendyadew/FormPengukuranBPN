@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b5fff">
+<meta name="description" content="Pencatatan data ukur pertanahan di lapangan">
+<title>Catatan Ukur</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --text: #101418;
+    --muted: #5b6570;
+    --accent: #0b5fff;
+    --accent-soft: #dbe7ff;
+    --ok: #0f8a3d;
+    --ok-bg: #dcf5e5;
+    --err: #c62828;
+    --err-bg: #fde0e0;
+    --border: #c9d1d9;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 17px;
+    line-height: 1.45;
+    padding-bottom: 140px; /* ruang untuk keypad */
+  }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--accent);
+    color: #fff;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  header h1 { font-size: 20px; margin: 0; flex: 1; }
+  #netBadge {
+    font-size: 13px; font-weight: 600;
+    padding: 4px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.25);
+  }
+  #netBadge.off { background: #ffb300; color: #3a2b00; }
+  main { max-width: 560px; margin: 0 auto; padding: 14px 14px 0; }
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(16,24,40,.08);
+  }
+  label.field-label { display: block; font-weight: 600; margin: 12px 0 6px; }
+  label.field-label:first-child { margin-top: 0; }
+  .hint { color: var(--muted); font-size: 13px; font-weight: 400; }
+
+  input[type="text"] {
+    width: 100%;
+    min-height: 56px;
+    font-size: 20px;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--text);
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--accent); }
+
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .cell { display: flex; flex-direction: column; gap: 4px; }
+  .cell .cap { font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; }
+  .cell input {
+    width: 100%;
+    min-height: 64px;
+    font-size: 24px;
+    text-align: center;
+    padding: 8px 4px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .cell input.active {
+    border: 3px solid var(--accent);
+    background: var(--accent-soft);
+  }
+  .cell input.invalid { border-color: var(--err); background: var(--err-bg); }
+
+  .err-msg { color: var(--err); font-size: 14px; font-weight: 600; margin-top: 8px; min-height: 20px; }
+
+  .preview {
+    background: var(--accent-soft);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 18px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-top: 12px;
+  }
+  .preview .dec { color: var(--accent); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .chip {
+    min-height: 44px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 2px solid var(--accent);
+    background: #fff;
+    color: var(--accent);
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .chip:active { background: var(--accent-soft); }
+
+  /* ===== Keypad kustom ===== */
+  #keypad {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 20;
+    background: #101418;
+    padding: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 10px);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    box-shadow: 0 -4px 16px rgba(0,0,0,.25);
+  }
+  #keypad.hidden { display: none; }
+  .key {
+    min-height: 60px;
+    font-size: 24px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    background: #2a3138;
+    color: #fff;
+  }
+  .key:active { background: #3d4650; }
+  .key.util { background: #4a5560; font-size: 18px; }
+  .key.next { background: var(--accent); grid-column: span 2; }
+  .key.save { background: var(--ok); grid-column: span 2; }
+  .key:disabled { background: #333a40; color: #777; }
+
+  /* ===== Toast ===== */
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 170px;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 30;
+    padding: 14px 22px;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--ok);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s, transform .25s;
+    max-width: 90vw;
+    text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.error { background: var(--err); }
+
+  /* ===== Riwayat ===== */
+  #historyList { list-style: none; margin: 0; padding: 0; }
+  #historyList li {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #historyList .info { flex: 1; min-width: 0; }
+  #historyList .ket { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #historyList .sub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #historyList button {
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 2px solid var(--accent);
+    background: #fff;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .empty { color: var(--muted); font-size: 15px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Catatan Ukur</h1>
+  <span id="netBadge">—</span>
+</header>
+
+<main>
+  <!-- ===== Form ===== -->
+  <section class="card" aria-label="Formulir ukur">
+    <label class="field-label" for="ket">Keterangan</label>
+    <input type="text" id="ket" placeholder="mis. Patok BM-01" autocomplete="off" enterkeyhint="done">
+    <div class="chips" id="chips" aria-label="Tombol cepat keterangan"></div>
+
+    <label class="field-label">Sudut <span class="hint">(derajat / menit / detik)</span></label>
+    <div class="grid4">
+      <div class="cell">
+        <input id="d" inputmode="none" readonly aria-label="Derajat">
+        <span class="cap">Derajat</span>
+      </div>
+      <div class="cell">
+        <input id="m" inputmode="none" readonly aria-label="Menit">
+        <span class="cap">Menit</span>
+      </div>
+      <div class="cell">
+        <input id="s" inputmode="none" readonly aria-label="Detik">
+        <span class="cap">Detik</span>
+      </div>
+      <div class="cell">
+        <input id="jarak" inputmode="none" readonly aria-label="Jarak dalam meter">
+        <span class="cap">Jarak (m)</span>
+      </div>
+    </div>
+
+    <div class="err-msg" id="errMsg" role="alert"></div>
+
+    <div class="preview" id="preview">0° 0' 0" &nbsp;·&nbsp; <span class="dec">0.000000</span></div>
+  </section>
+
+  <!-- ===== Riwayat ===== -->
+  <section class="card" aria-label="Riwayat terakhir">
+    <h2>5 Input Terakhir</h2>
+    <ul id="historyList"></ul>
+    <p class="empty" id="historyEmpty">Belum ada data.</p>
+  </section>
+</main>
+
+<!-- ===== Keypad kustom ===== -->
+<div id="keypad" class="hidden" aria-label="Keypad angka"></div>
+
+<!-- ===== Toast ===== -->
+<div id="toast" role="status"></div>
+
+<script>
+"use strict";
+
+/* ================= KONFIGURASI ================= */
+const API_URL = "https://script.google.com/macros/s/AKfycbywu7pHXzfFJz8xwvbiAm5UQiy3sEAKnLPUQ7dcHtCfO5bJ2aOuTb_nq15jpmegqtg2zQ/exec";
+
+/* ================= STATE ================= */
+const COLS = ["d", "m", "s", "jarak"];
+const COL_LABEL = { d: "Derajat", m: "Menit", s: "Detik", jarak: "Jarak" };
+let activeCol = null;          // kolom yang sedang diisi keypad
+let chipList = loadChips();
+
+const $ = (id) => document.getElementById(id);
+const inputs = { d: $("d"), m: $("m"), s: $("s"), jarak: $("jarak") };
+
+/* ================= CHIP CEPAT ================= */
+const CHIP_KEY = "ukur.chips";
+const CHIP_DEFAULT = ["Patok", "Batas", "Sudut", "Tanah"];
+
+function loadChips() {
+  try {
+    const raw = localStorage.getItem(CHIP_KEY);
+    if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) return arr; }
+  } catch (e) { /* abaikan */ }
+  return [...CHIP_DEFAULT];
+}
+function saveChips() {
+  try { localStorage.setItem(CHIP_KEY, JSON.stringify(chipList)); } catch (e) { /* abaikan */ }
+}
+function renderChips() {
+  const box = $("chips");
+  box.innerHTML = "";
+  chipList.forEach((c) => {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.type = "button";
+    b.textContent = c;
+    b.addEventListener("click", () => { $("ket").value = c; });
+    box.appendChild(b);
+  });
+  // Chip "+" untuk menambah daftar cepat
+  const add = document.createElement("button");
+  add.className = "chip";
+  add.type = "button";
+  add.textContent = "+ Tambah";
+  add.addEventListener("click", () => {
+    const v = prompt("Teks chip baru:", "");
+    if (v && v.trim()) {
+      chipList.push(v.trim().slice(0, 30));
+      saveChips(); renderChips();
+    }
+  });
+  box.appendChild(add);
+}
+
+/* ================= KEYPAD ================= */
+const keypad = $("keypad");
+
+function buildKeypad() {
+  const keys = [
+    { t: "1", v: "1" }, { t: "2", v: "2" }, { t: "3", v: "3" },
+    { t: "C", v: "C", cls: "util" },
+    { t: "4", v: "4" }, { t: "5", v: "5" }, { t: "6", v: "6" },
+    { t: "⌫", v: "B", cls: "util" },
+    { t: "7", v: "7" }, { t: "8", v: "8" }, { t: "9", v: "9" },
+    { t: ".", v: ".", cls: "util" },
+    { t: "0", v: "0" }, { t: "00", v: "00" },
+  ];
+  keypad.innerHTML = "";
+  keys.forEach((k) => {
+    const b = document.createElement("button");
+    b.className = "key" + (k.cls ? " " + k.cls : "");
+    b.type = "button";
+    b.textContent = k.t;
+    b.dataset.val = k.v;
+    b.addEventListener("click", () => onKey(k.v));
+    keypad.appendChild(b);
+  });
+  // Tombol Lanjut / Simpan
+  const next = document.createElement("button");
+  next.className = "key next";
+  next.type = "button";
+  next.id = "keyNext";
+  next.addEventListener("click", onNext);
+  keypad.appendChild(next);
+  updateNextButton();
+}
+
+function updateNextButton() {
+  const b = $("keyNext");
+  if (!b) return;
+  if (activeCol === "jarak") {
+    b.textContent = "Simpan";
+    b.className = "key save";
+    b.disabled = !formValid();
+  } else {
+    b.textContent = "Lanjut ▶";
+    b.className = "key next";
+    b.disabled = false;
+  }
+}
+
+function onKey(v) {
+  if (!activeCol) return;
+  const inp = inputs[activeCol];
+  let val = inp.value;
+
+  if (v === "C") {
+    val = "";
+  } else if (v === "B") {
+    val = val.slice(0, -1);
+  } else if (v === ".") {
+    if (!val.includes(".")) val = val === "" ? "0." : val + ".";
+  } else if (v === "00") {
+    if (val === "" || val === "0") val = "0";
+    else val += "00";
+  } else {
+    // batasi panjang masukkan
+    if (val.replace(/[^0-9]/g, "").length >= 9) return;
+    if (val === "0") val = v;
+    else val += v;
+  }
+  inp.value = val;
+  validate();
+}
+
+function onNext() {
+  if (!activeCol) { setActiveCol("d"); return; }
+  const i = COLS.indexOf(activeCol);
+  if (i < COLS.length - 1) {
+    setActiveCol(COLS[i + 1]);
+  } else {
+    saveEntry();
+  }
+}
+
+function setActiveCol(col) {
+  activeCol = col;
+  COLS.forEach((c) => inputs[c].classList.toggle("active", c === col));
+  keypad.classList.toggle("hidden", !col);
+  updateNextButton();
+}
+
+// Klik kolom angka -> buka keypad untuk kolom itu
+COLS.forEach((c) => {
+  inputs[c].addEventListener("focus", (e) => { e.preventDefault(); inputs[c].blur(); setActiveCol(c); });
+  inputs[c].addEventListener("click", () => setActiveCol(c));
+});
+
+/* ================= VALIDASI & PRATINJAU ================= */
+function parseNum(v) { return v === "" ? NaN : Number(v); }
+
+function validate() {
+  const d = inputs.d.value, m = inputs.m.value, s = inputs.s.value, j = inputs.jarak.value;
+  let msg = "";
+
+  const dN = parseNum(d), mN = parseNum(m), sN = parseNum(s), jN = parseNum(j);
+
+  if (d !== "" && (isNaN(dN) || dN < 0 || dN > 360)) msg = "Derajat harus 0–360.";
+  else if (m !== "" && (isNaN(mN) || mN < 0 || mN > 59)) msg = "Menit harus 0–59.";
+  else if (s !== "" && (isNaN(sN) || sN < 0 || sN > 59.99)) msg = "Detik harus 0–59,99.";
+  else if (j !== "" && (isNaN(jN) || jN < 0)) msg = "Jarak harus ≥ 0.";
+
+  // Tandai kolom tidak valid
+  inputs.d.classList.toggle("invalid", d !== "" && (isNaN(dN) || dN < 0 || dN > 360));
+  inputs.m.classList.toggle("invalid", m !== "" && (isNaN(mN) || mN < 0 || mN > 59));
+  inputs.s.classList.toggle("invalid", s !== "" && (isNaN(sN) || sN < 0 || sN > 59.99));
+  inputs.jarak.classList.toggle("invalid", j !== "" && (isNaN(jN) || jN < 0));
+
+  $("errMsg").textContent = msg;
+  updatePreview();
+  updateNextButton();
+  return msg === "";
+}
+
+function formValid() {
+  const dN = parseNum(inputs.d.value), mN = parseNum(inputs.m.value),
+        sN = parseNum(inputs.s.value), jN = parseNum(inputs.jarak.value);
+  return inputs.d.value !== "" && !isNaN(dN) && dN >= 0 && dN <= 360 &&
+         inputs.m.value !== "" && !isNaN(mN) && mN >= 0 && mN <= 59 &&
+         inputs.s.value !== "" && !isNaN(sN) && sN >= 0 && sN <= 59.99 &&
+         inputs.jarak.value !== "" && !isNaN(jN) && jN >= 0;
+}
+
+function updatePreview() {
+  const dN = parseNum(inputs.d.value), mN = parseNum(inputs.m.value), sN = parseNum(inputs.s.value);
+  if (isNaN(dN) || isNaN(mN) || isNaN(sN)) {
+    $("preview").innerHTML = "0° 0' 0\" &nbsp;·&nbsp; <span class=\"dec\">0.000000</span>";
+    return;
+  }
+  const dec = dN + mN / 60 + sN / 3600;
+  const sStr = sN % 1 === 0 ? String(sN) : sN.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  $("preview").innerHTML =
+    dN + "° " + mN + "' " + sStr + "\" &nbsp;·&nbsp; <span class=\"dec\">" + dec.toFixed(6) + "</span>";
+}
+
+/* ================= ANTREAN & PENGIRIMAN ================= */
+const QUEUE_KEY = "ukur.antrean";
+const HIST_KEY = "ukur.riwayat";
+
+function loadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) { const v = JSON.parse(raw); if (v !== null) return v; }
+  } catch (e) { /* abaikan */ }
+  return fallback;
+}
+function saveQueue(q) { try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch (e) { /* abaikan */ } }
+
+function getQueue() { return loadJSON(QUEUE_KEY, []); }
+
+function updateNetBadge() {
+  const badge = $("netBadge");
+  const q = getQueue();
+  if (!navigator.onLine) {
+    badge.textContent = q.length ? "Offline · " + q.length + " menunggu" : "Offline";
+    badge.classList.add("off");
+  } else if (q.length) {
+    badge.textContent = q.length + " menunggu terkirim";
+    badge.classList.add("off");
+  } else {
+    badge.textContent = "Daring";
+    badge.classList.remove("off");
+  }
+}
+
+async function kirim(entry) {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(entry),
+  });
+  let data;
+  try { data = await res.json(); } catch (e) { throw new Error("Respons bukan JSON"); }
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.error) || ("HTTP " + res.status));
+  }
+}
+
+async function processQueue() {
+  if (!navigator.onLine) return;
+  let q = getQueue();
+  if (!q.length) return;
+  const gagal = [];
+  for (const entry of q) {
+    try {
+      await kirim(entry);
+    } catch (e) {
+      gagal.push(entry); // tetap di antrean
+    }
+  }
+  saveQueue(gagal);
+  updateNetBadge();
+  if (gagal.length < q.length) toast("Sebagian data terkirim");
+}
+
+async function saveEntry() {
+  if (!formValid()) { validate(); return; }
+  const dN = parseNum(inputs.d.value), mN = parseNum(inputs.m.value),
+        sN = parseNum(inputs.s.value), jN = parseNum(inputs.jarak.value);
+  const entry = {
+    id: crypto.randomUUID(),
+    waktu: new Date().toISOString(),
+    keterangan: $("ket").value.trim(),
+    derajat: dN,
+    menit: mN,
+    detik: sN,
+    desimal: +(dN + mN / 60 + sN / 3600).toFixed(6),
+    jarak: jN,
+  };
+
+  let terkirim = false;
+  if (navigator.onLine) {
+    try {
+      await kirim(entry);
+      terkirim = true;
+    } catch (e) {
+      // jatuh ke antrean
+    }
+  }
+
+  if (!terkirim) {
+    const q = getQueue();
+    q.push(entry);
+    saveQueue(q);
+    toast("Disimpan di antrean (offline)");
+  } else {
+    toast("Tersimpan");
+  }
+
+  navigator.vibrate && navigator.vibrate(80);
+
+  // Riwayat 5 terakhir
+  const hist = loadJSON(HIST_KEY, []);
+  hist.unshift(entry);
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(hist.slice(0, 5))); } catch (e) { /* abaikan */ }
+  renderHistory();
+
+  // Reset form
+  $("ket").value = "";
+  COLS.forEach((c) => { inputs[c].value = ""; inputs[c].classList.remove("invalid"); });
+  $("errMsg").textContent = "";
+  updatePreview();
+  setActiveCol(null);
+  updateNetBadge();
+  $("ket").focus();
+}
+
+/* ================= RIWAYAT ================= */
+function renderHistory() {
+  const hist = loadJSON(HIST_KEY, []);
+  const ul = $("historyList");
+  ul.innerHTML = "";
+  $("historyEmpty").style.display = hist.length ? "none" : "block";
+  hist.forEach((h) => {
+    const li = document.createElement("li");
+    const info = document.createElement("div");
+    info.className = "info";
+    const az = h.derajat + h.menit / 60 + h.detik / 3600;
+    info.innerHTML =
+      "<div class=\"ket\"></div>" +
+      "<div class=\"sub\">" + az.toFixed(3) + "° · " + h.jarak + " m · " +
+      new Date(h.waktu).toLocaleString("id-ID") + "</div>";
+    info.querySelector(".ket").textContent = h.keterangan || "(tanpa keterangan)";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "Ulangi keterangan";
+    btn.addEventListener("click", () => { $("ket").value = h.keterangan || ""; $("ket").focus(); });
+    li.appendChild(info);
+    li.appendChild(btn);
+    ul.appendChild(li);
+  });
+}
+
+/* ================= TOAST ================= */
+let toastTimer = null;
+function toast(text, isError) {
+  const t = $("toast");
+  t.textContent = text;
+  t.classList.toggle("error", !!isError);
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/* ================= EVENT ================= */
+window.addEventListener("online", () => { updateNetBadge(); processQueue(); });
+window.addEventListener("offline", updateNetBadge);
+window.addEventListener("load", () => { updateNetBadge(); processQueue(); });
+
+/* ================= SERVICE WORKER & WAKE LOCK ================= */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => { /* abaikan */ });
+  });
+}
+
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ("wakeLock" in navigator) {
+      wakeLock = await navigator.wakeLock.request("screen");
+    }
+  } catch (e) { /* opsional — lanjut tanpa galat */ }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") requestWakeLock();
+});
+requestWakeLock();
+
+/* ================= INIT ================= */
+renderChips();
+buildKeypad();
+renderHistory();
+validate();
+updateNetBadge();
+</script>
+</body>
+</html>
