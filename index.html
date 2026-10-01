@@ -8,6 +8,7 @@
 <title>Catatan Ukur</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -101,9 +102,15 @@
         <h2>Sketsa Polygon</h2>
         <p class="section-note">Pilih titik hasil ukur, lalu atur urutannya untuk membentuk polygon.</p>
       </div>
-      <div class="sketch-canvas-wrap">
+      <div class="sketch-map-actions">
+        <label class="leaflet-toggle"><input id="leafletToggle" type="checkbox"> Tampilkan Leaflet</label>
+        <button id="resetMapZoom" type="button" disabled>Reset zoom</button>
+      </div>
+      <p class="leaflet-note" id="leafletNote" hidden>Leaflet menampilkan bidang koordinat X/Y lokal, bukan peta dasar geografis.</p>
+      <div class="sketch-canvas-wrap" id="sketchSvgWrap">
         <svg id="polygonSvg" viewBox="0 0 900 520" role="img" aria-label="Sketsa titik terpilih"></svg>
       </div>
+      <div id="leafletMap" class="leaflet-map" role="application" aria-label="Peta Leaflet koordinat ukur" hidden></div>
       <div class="sketch-metrics">
         <div class="sketch-metric"><span>Luas bidang</span><strong id="polygonArea">—</strong></div>
         <div class="sketch-metric"><span>Keliling</span><strong id="polygonPerimeter">—</strong></div>
@@ -118,9 +125,19 @@
   </section>
 </main>
 
+<div class="save-dialog-backdrop" id="saveDialog" hidden>
+  <section class="save-dialog" role="dialog" aria-modal="true" aria-labelledby="saveDialogTitle" aria-describedby="saveDialogMessage">
+    <div class="save-dialog-mark" id="saveDialogMark" aria-hidden="true">✓</div>
+    <h2 id="saveDialogTitle">Data terkirim</h2>
+    <p id="saveDialogMessage">Terkirim, cek di bawah untuk status.</p>
+    <button id="saveDialogClose" type="button">Lihat status</button>
+  </section>
+</div>
+
 <!-- ===== Toast ===== -->
 <div id="toast" role="status"></div>
 
+<script src="vendor/leaflet/leaflet.js" defer></script>
 <script src="app.js" defer></script>
 </body>
 </html>

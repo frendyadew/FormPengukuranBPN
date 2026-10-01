@@ -21,6 +21,7 @@ let activeStation = null;
 let stationReady = false;
 let saving = false;
 let processingQueue = false;
+let submissionAttempted = false;
 
 /* ================= CHIP CEPAT ================= */
 function loadChips() {
@@ -131,14 +132,18 @@ function validate() {
   else if (s !== "" && (isNaN(sN) || sN < 0 || sN > 59.99)) msg = "Detik harus 0–59,99.";
   else if (d !== "" && m !== "" && s !== "" && dN === 360 && (mN !== 0 || sN !== 0)) msg = "Untuk 360°, menit dan detik harus 0.";
   else if (j !== "" && (isNaN(jN) || jN < 0)) msg = "Jarak harus ≥ 0.";
-  else if ((d || m || s || j) && !$("target").value.trim()) msg = "Nama titik bidik harus diisi.";
+  else if (submissionAttempted && !$("target").value.trim()) msg = "Nama titik bidik harus diisi.";
+  else if (submissionAttempted && d === "") msg = "Derajat harus diisi.";
+  else if (submissionAttempted && m === "") msg = "Menit harus diisi.";
+  else if (submissionAttempted && s === "") msg = "Detik harus diisi.";
+  else if (submissionAttempted && j === "") msg = "Jarak harus diisi.";
 
   // Tandai kolom tidak valid
-  inputs.d.classList.toggle("invalid", d !== "" && (isNaN(dN) || dN < 0 || dN > 360));
-  inputs.m.classList.toggle("invalid", m !== "" && (isNaN(mN) || mN < 0 || mN > 59));
-  inputs.s.classList.toggle("invalid", s !== "" && (isNaN(sN) || sN < 0 || sN > 59.99));
-  inputs.jarak.classList.toggle("invalid", j !== "" && (isNaN(jN) || jN < 0));
-  $("target").classList.toggle("invalid", !!(d || m || s || j) && !$("target").value.trim());
+  inputs.d.classList.toggle("invalid", (d !== "" && (isNaN(dN) || dN < 0 || dN > 360)) || (submissionAttempted && d === ""));
+  inputs.m.classList.toggle("invalid", (m !== "" && (isNaN(mN) || mN < 0 || mN > 59)) || (submissionAttempted && m === ""));
+  inputs.s.classList.toggle("invalid", (s !== "" && (isNaN(sN) || sN < 0 || sN > 59.99)) || (submissionAttempted && s === ""));
+  inputs.jarak.classList.toggle("invalid", (j !== "" && (isNaN(jN) || jN < 0)) || (submissionAttempted && j === ""));
+  $("target").classList.toggle("invalid", !$("target").value.trim() && (submissionAttempted || !!(d || m || s || j)));
 
   $("errMsg").textContent = msg;
   updatePreview();
@@ -150,7 +155,7 @@ function updateSaveButton() {
   const button = $("saveButton");
   button.textContent = saving ? "Menyimpan..." : currentEditId ? "Simpan Perubahan" : "Simpan Data";
   button.classList.toggle("is-saving", saving);
-  button.disabled = saving || !stationReady || !formValid();
+  button.disabled = saving || !stationReady;
 }
 
 function formValid() {
@@ -189,6 +194,8 @@ const POLYGON_KEY = "ukur.titik-polygon";
 const POLYGON_SELECTION_KEY = "ukur.pilihan-polygon";
 const storedPolygonSelection = loadJSON(POLYGON_SELECTION_KEY, []);
 let selectedPolygonIds = Array.isArray(storedPolygonSelection) ? storedPolygonSelection : [];
+let leafletMap = null;
+let leafletGeometry = null;
 
 function loadJSON(key, fallback) {
   try {
@@ -436,6 +443,79 @@ function renderPolygon() {
     $("sketchSummary").classList.remove("error");
     $("sketchSummary").textContent = selected.length ? "Pilih minimal 3 titik untuk menghitung polygon." : "Urutan pilihan menjadi urutan vertex polygon.";
   }
+  $("resetMapZoom").disabled = selected.length === 0;
+  if (leafletMap && !$("leafletMap").hidden) renderLeafletLayers(selected);
+}
+
+function initializeLeaflet() {
+  if (leafletMap) return true;
+  if (typeof L === "undefined") {
+    toast("Leaflet tidak berhasil dimuat", true);
+    $("leafletToggle").checked = false;
+    return false;
+  }
+  leafletMap = L.map("leafletMap", {
+    crs: L.CRS.Simple,
+    minZoom: -10,
+    maxZoom: 12,
+    zoomSnap: 0.25,
+    attributionControl: true,
+  });
+  L.control.scale({ imperial: false, metric: true }).addTo(leafletMap);
+  leafletGeometry = L.featureGroup().addTo(leafletMap);
+  leafletMap.setView([0, 0], 0);
+  return true;
+}
+
+function renderLeafletLayers(points) {
+  if (!leafletGeometry) return;
+  leafletGeometry.clearLayers();
+  const latLngs = points.map((point) => [point.coordinates.y, point.coordinates.x]);
+  if (latLngs.length >= 2) {
+    const linePoints = latLngs.length >= 3 ? [...latLngs, latLngs[0]] : latLngs;
+    L.polyline(linePoints, { color: "#176b5b", weight: 3, opacity: 0.9 }).addTo(leafletGeometry);
+  }
+  points.forEach((point, index) => {
+    const name = point.titikBidik || point.keterangan || "Titik " + (index + 1);
+    L.circleMarker(latLngs[index], {
+      radius: 7,
+      color: "#ffffff",
+      weight: 2,
+      fillColor: "#d66a2c",
+      fillOpacity: 1,
+    }).bindTooltip((index + 1) + ". " + name, { permanent: true, direction: "top", offset: [0, -5] })
+      .addTo(leafletGeometry);
+  });
+}
+
+function fitLeafletToPoints() {
+  if (!leafletMap) return;
+  const pointsById = new Map(availablePolygonPoints().map((point) => [point.id, point]));
+  const points = selectedPolygonIds.map((id) => pointsById.get(id)).filter(Boolean);
+  if (!points.length) return;
+  if (points.length === 1) {
+    leafletMap.setView([points[0].coordinates.y, points[0].coordinates.x], 2, { animate: false });
+    return;
+  }
+  const xs = points.map((point) => point.coordinates.x);
+  const ys = points.map((point) => point.coordinates.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const padding = Math.max(maxX - minX, maxY - minY, 1) * 0.15;
+  const bounds = L.latLngBounds([minY - padding, minX - padding], [maxY + padding, maxX + padding]);
+  leafletMap.fitBounds(bounds, { animate: false, maxZoom: 12 });
+}
+
+function setLeafletVisibility(showLeaflet) {
+  if (showLeaflet && !initializeLeaflet()) return;
+  $("sketchSvgWrap").hidden = showLeaflet;
+  $("leafletMap").hidden = !showLeaflet;
+  $("leafletNote").hidden = !showLeaflet;
+  if (showLeaflet) {
+    leafletMap.invalidateSize({ pan: false });
+    renderPolygon();
+    fitLeafletToPoints();
+  }
 }
 
 function switchPage(page) {
@@ -444,7 +524,10 @@ function switchPage(page) {
   $("sketchPage").hidden = !showingSketch;
   $("surveyTab").setAttribute("aria-selected", String(!showingSketch));
   $("sketchTab").setAttribute("aria-selected", String(showingSketch));
-  if (showingSketch) renderPolygon();
+  if (showingSketch) {
+    renderPolygon();
+    if (leafletMap && $("leafletToggle").checked) leafletMap.invalidateSize({ pan: false });
+  }
 }
 
 function isValidStation(station) {
@@ -590,12 +673,13 @@ async function processQueue() {
 
 async function saveEntry() {
   if (saving) return;
-  if (!formValid()) { validate(); return; }
+  if (!formValid()) { submissionAttempted = true; validate(); return; }
   saving = true;
   updateSaveButton();
   const dN = parseNum(inputs.d.value), mN = parseNum(inputs.m.value),
         sN = parseNum(inputs.s.value), jN = parseNum(inputs.jarak.value);
   const values = measurementValues();
+  let saveFeedback = null;
   try {
     const history = loadJSON(HIST_KEY, []);
     if (currentEditId) {
@@ -624,7 +708,9 @@ async function saveEntry() {
       renderHistory();
       if (navigator.onLine) await processQueue();
       const stillPending = getQueue().some((entry) => entry.id === updated.id);
-      toast(stillPending ? "Edit disimpan, menunggu terkirim" : "Edit terkirim ke spreadsheet");
+      saveFeedback = stillPending
+        ? { title: "Perubahan tersimpan", message: "Menunggu koneksi. Statusnya dapat dicek pada riwayat di bawah.", pending: true }
+        : { title: "Perubahan terkirim", message: "Perubahan terkirim, cek di bawah untuk status.", pending: false };
     } else {
       const entry = { id: crypto.randomUUID(), waktu: new Date().toISOString(), ...values };
       history.unshift(entry);
@@ -637,7 +723,9 @@ async function saveEntry() {
       renderHistory();
       if (navigator.onLine) await processQueue();
       const stillPending = getQueue().some((queued) => queued.id === entry.id);
-      toast(stillPending ? "Data Pending, akan dikirim saat tersambung" : "Data terkirim");
+      saveFeedback = stillPending
+        ? { title: "Data tersimpan", message: "Menunggu koneksi. Statusnya dapat dicek pada riwayat di bawah.", pending: true }
+        : { title: "Data terkirim", message: "Terkirim, cek di bawah untuk status.", pending: false };
     }
   } finally {
     saving = false;
@@ -645,12 +733,15 @@ async function saveEntry() {
   }
   navigator.vibrate && navigator.vibrate(50);
   updateNetBadge();
+  if (saveFeedback) showSaveDialog(saveFeedback);
 }
 
 function resetForm() {
+  submissionAttempted = false;
   $("target").value = "";
   $("ket").value = "";
   COLS.forEach((col) => { inputs[col].value = ""; inputs[col].classList.remove("invalid"); });
+  $("target").classList.remove("invalid");
   Object.keys(wheels).forEach((col) => setWheelPosition(col, 0));
   $("errMsg").textContent = "";
   updatePreview();
@@ -756,6 +847,23 @@ function toast(text, isError) {
   toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
 }
 
+function showSaveDialog(feedback) {
+  $("saveDialogTitle").textContent = feedback.title;
+  $("saveDialogMessage").textContent = feedback.message;
+  $("saveDialogMark").textContent = feedback.pending ? "…" : "✓";
+  $("saveDialog").classList.toggle("pending", feedback.pending);
+  $("saveDialog").hidden = false;
+  $("saveDialogClose").focus();
+}
+
+function closeSaveDialog(showHistory) {
+  $("saveDialog").hidden = true;
+  if (showHistory) {
+    switchPage("survey");
+    $("historyList").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
 /* ================= EVENT ================= */
 window.addEventListener("online", () => { updateNetBadge(); processQueue(); });
 window.addEventListener("offline", updateNetBadge);
@@ -792,6 +900,15 @@ $("saveButton").addEventListener("click", saveEntry);
 $("saveStation").addEventListener("click", saveStationSetup);
 $("surveyTab").addEventListener("click", () => switchPage("survey"));
 $("sketchTab").addEventListener("click", () => switchPage("sketch"));
+$("leafletToggle").addEventListener("change", () => setLeafletVisibility($("leafletToggle").checked));
+$("resetMapZoom").addEventListener("click", fitLeafletToPoints);
+$("saveDialogClose").addEventListener("click", () => closeSaveDialog(true));
+$("saveDialog").addEventListener("click", (event) => {
+  if (event.target === $("saveDialog")) closeSaveDialog(false);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("saveDialog").hidden) closeSaveDialog(false);
+});
 $("target").addEventListener("input", validate);
 inputs.jarak.addEventListener("input", updatePreview);
 $("cancelEdit").addEventListener("click", () => { cancelEditing(); resetForm(); validate(); });

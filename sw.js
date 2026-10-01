@@ -1,10 +1,17 @@
 /* Service Worker — cache-first untuk aset statis */
-const CACHE = "catatan-ukur-v4";
+const CACHE = "catatan-ukur-v5";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./vendor/leaflet/leaflet.css",
+  "./vendor/leaflet/leaflet.js",
+  "./vendor/leaflet/images/layers-2x.png",
+  "./vendor/leaflet/images/layers.png",
+  "./vendor/leaflet/images/marker-icon-2x.png",
+  "./vendor/leaflet/images/marker-icon.png",
+  "./vendor/leaflet/images/marker-shadow.png",
   "./manifest.json",
   "./icon.svg"
 ];
