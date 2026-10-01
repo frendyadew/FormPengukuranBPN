@@ -1,14 +1,11 @@
 /* Service Worker — cache-first untuk aset statis */
-const CACHE = "catatan-ukur-v1";
+const CACHE = "catatan-ukur-v2";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
   "./icon.svg",
-  "./icon-192.png",
-  "./icon-512.png",
-  "./icon-maskable-192.png",
-  "./icon-maskable-512.png"
+  "./icon.svg"
 ];
 
 self.addEventListener("install", (event) => {

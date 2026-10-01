@@ -3,32 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0b5fff">
+<meta name="theme-color" content="#174d43">
 <meta name="description" content="Pencatatan data ukur pertanahan di lapangan">
 <title>Catatan Ukur</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root {
-    --bg: #f4f6f8;
+    --bg: #edf2ef;
     --card: #ffffff;
-    --text: #101418;
-    --muted: #5b6570;
-    --accent: #0b5fff;
-    --accent-soft: #dbe7ff;
-    --ok: #0f8a3d;
-    --ok-bg: #dcf5e5;
+    --text: #17231f;
+    --muted: #5c6b65;
+    --accent: #176b5b;
+    --accent-soft: #dcefe8;
+    --ok: #20734c;
+    --ok-bg: #e0f2e8;
     --err: #c62828;
     --err-bg: #fde0e0;
-    --border: #c9d1d9;
-    --radius: 14px;
+    --border: #c7d3cd;
+    --radius: 8px;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; }
   body {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
+    background-color: var(--bg);
+    background-image: repeating-linear-gradient(135deg, rgba(23,107,91,.025) 0 1px, transparent 1px 12px);
     color: var(--text);
     font-size: 17px;
     line-height: 1.45;
@@ -36,7 +36,7 @@
   }
   header {
     position: sticky; top: 0; z-index: 10;
-    background: var(--accent);
+    background: #174d43;
     color: #fff;
     padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
     display: flex; align-items: center; gap: 10px;
@@ -54,8 +54,20 @@
     border-radius: var(--radius);
     padding: 14px;
     margin-bottom: 14px;
-    box-shadow: 0 1px 3px rgba(16,24,40,.08);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(23,35,31,.05);
   }
+  .card h2 { font-size: 17px; margin: 0 0 4px; }
+  .section-note { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+  .station-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .station-grid .station-name { grid-column: 1 / -1; }
+  .station-grid label { display: block; margin: 8px 0 5px; font-size: 13px; font-weight: 700; color: var(--muted); }
+  .station-grid input { min-height: 48px !important; font-size: 17px !important; }
+  .station-save { width: 100%; min-height: 46px; margin-top: 10px; border: 0; border-radius: 8px; background: #174d43; color: #fff; font-size: 15px; font-weight: 700; }
+  .station-state { min-height: 18px; margin-top: 7px; color: var(--muted); font-size: 13px; }
+  .station-state.ready { color: var(--ok); font-weight: 700; }
+  .entry-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+  .entry-fields:disabled { opacity: .48; }
   label.field-label { display: block; font-weight: 600; margin: 12px 0 6px; }
   label.field-label:first-child { margin-top: 0; }
   .hint { color: var(--muted); font-size: 13px; font-weight: 400; }
@@ -71,6 +83,7 @@
     color: var(--text);
   }
   input[type="text"]:focus { outline: none; border-color: var(--accent); }
+  input[type="text"].invalid { border-color: var(--err); background: var(--err-bg); }
 
   .angle-row {
     display: grid;
@@ -103,7 +116,7 @@
     scrollbar-width: none;
     position: relative;
     border-radius: 8px;
-    background: #f4f6f8;
+    background: #edf2ef;
     mask-image: linear-gradient(to bottom, transparent, #000 24%, #000 76%, transparent);
   }
   .wheel::-webkit-scrollbar { display: none; }
@@ -116,7 +129,7 @@
     height: 36px;
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
-    background: rgba(11, 95, 255, .06);
+    background: rgba(23, 107, 91, .06);
     pointer-events: none;
   }
   .wheel-spacer, .wheel-option { height: 36px; }
@@ -124,7 +137,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    scroll-snap-align: start;
+    scroll-snap-align: center;
     color: var(--muted);
     font-size: 16px;
     font-variant-numeric: tabular-nums;
@@ -153,7 +166,7 @@
     min-height: 44px;
     padding: 8px 16px;
     border-radius: 999px;
-    border: 2px solid var(--accent);
+    border: 1px solid var(--accent);
     background: #fff;
     color: var(--accent);
     font-size: 16px;
@@ -208,9 +221,9 @@
     font: inherit;
     text-decoration: underline;
   }
-  #formCard.editing { --accent: #a96b00; --accent-soft: #fff2bf; }
-  #formCard.editing .save-entry { background: #b77900; color: #fff; }
-  #formCard.editing .wheel::after { background: rgba(183,121,0,.09); }
+  #formCard.editing { --accent: #a45a16; --accent-soft: #f8eadb; }
+  #formCard.editing .save-entry { background: #a45a16; color: #fff; }
+  #formCard.editing .wheel::after { background: rgba(164,90,22,.09); }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes save-press {
     0% { transform: scale(1); }
@@ -297,12 +310,36 @@
 </header>
 
 <main>
+  <section class="card" aria-label="Pengaturan alat">
+    <h2>Station Setup</h2>
+    <p class="section-note">Tetapkan titik berdiri dan koordinat awal sebelum mulai mengukur.</p>
+    <div class="station-grid">
+      <div class="station-name">
+        <label for="stationName">Nama Titik Berdiri</label>
+        <input type="text" id="stationName" placeholder="mis. BM-01" autocomplete="off">
+      </div>
+      <div>
+        <label for="stationX">Koordinat Awal X / Easting</label>
+        <input type="text" id="stationX" inputmode="decimal" placeholder="0.000" autocomplete="off">
+      </div>
+      <div>
+        <label for="stationY">Koordinat Awal Y / Northing</label>
+        <input type="text" id="stationY" inputmode="decimal" placeholder="0.000" autocomplete="off">
+      </div>
+    </div>
+    <button class="station-save" id="saveStation" type="button">Simpan Pengaturan Alat</button>
+    <div class="station-state" id="stationState" role="status"></div>
+  </section>
+
   <!-- ===== Form ===== -->
   <section class="card" id="formCard" aria-label="Formulir ukur">
     <div class="form-mode" id="formMode" hidden>
       <span id="formModeText"></span>
       <button id="cancelEdit" type="button">Batal mengedit</button>
     </div>
+    <fieldset class="entry-fields" id="entryFields" disabled>
+    <label class="field-label" for="target">Titik Bidik / Target</label>
+    <input type="text" id="target" placeholder="mis. Patok-1 atau Batas-A" autocomplete="off" enterkeyhint="next">
     <label class="field-label" for="ket">Keterangan</label>
     <input type="text" id="ket" placeholder="mis. Patok BM-01" autocomplete="off" enterkeyhint="done">
     <div class="chips" id="chips" aria-label="Tombol cepat keterangan"></div>
@@ -333,6 +370,7 @@
 
     <div class="preview" id="preview">0° 0' 0" &nbsp;·&nbsp; <span class="dec">0.000000</span></div>
     <button class="save-entry" id="saveButton" type="button" disabled>Simpan Data</button>
+    </fieldset>
   </section>
 
   <!-- ===== Riwayat ===== -->
@@ -350,11 +388,12 @@
 "use strict";
 
 /* ================= KONFIGURASI ================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbywu7pHXzfFJz8xwvbiAm5UQiy3sEAKnLPUQ7dcHtCfO5bJ2aOuTb_nq15jpmegqtg2zQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxrDeysGfTaQfHTG2oH-42NoBbW_B_vOM0kkV0hvjQphz8Dz-7pT9237FmzvHRdUsAJEg/exec";
 
 /* ================= STATE ================= */
 const COLS = ["d", "m", "s", "jarak"];
 const CHIP_KEY = "ukur.chips";
+const STATION_KEY = "ukur.station";
 const CHIP_DEFAULT = ["Patok", "Batas", "Sudut", "Tanah"];
 let chipList = loadChips();
 
@@ -364,6 +403,9 @@ const wheels = { d: $("dWheel"), m: $("mWheel") };
 const WHEEL_ROW_HEIGHT = 36;
 const wheelTimers = {};
 let currentEditId = null;
+let currentEntryStation = null;
+let activeStation = null;
+let stationReady = false;
 let saving = false;
 let processingQueue = false;
 
@@ -415,7 +457,8 @@ function updateWheelSelection(col, selectedIndex) {
 
 function setWheelPosition(col, value) {
   const max = col === "d" ? 360 : 59;
-  const index = Math.max(0, Math.min(max, Math.round(value)));
+  const numericValue = Number(value);
+  const index = Number.isFinite(numericValue) ? Math.max(0, Math.min(max, Math.round(numericValue))) : 0;
   wheels[col].scrollTop = index * WHEEL_ROW_HEIGHT;
   updateWheelSelection(col, index);
 }
@@ -473,13 +516,16 @@ function validate() {
   if (d !== "" && (isNaN(dN) || dN < 0 || dN > 360)) msg = "Derajat harus 0–360.";
   else if (m !== "" && (isNaN(mN) || mN < 0 || mN > 59)) msg = "Menit harus 0–59.";
   else if (s !== "" && (isNaN(sN) || sN < 0 || sN > 59.99)) msg = "Detik harus 0–59,99.";
+  else if (d !== "" && m !== "" && s !== "" && dN === 360 && (mN !== 0 || sN !== 0)) msg = "Untuk 360°, menit dan detik harus 0.";
   else if (j !== "" && (isNaN(jN) || jN < 0)) msg = "Jarak harus ≥ 0.";
+  else if ((d || m || s || j) && !$("target").value.trim()) msg = "Nama titik bidik harus diisi.";
 
   // Tandai kolom tidak valid
   inputs.d.classList.toggle("invalid", d !== "" && (isNaN(dN) || dN < 0 || dN > 360));
   inputs.m.classList.toggle("invalid", m !== "" && (isNaN(mN) || mN < 0 || mN > 59));
   inputs.s.classList.toggle("invalid", s !== "" && (isNaN(sN) || sN < 0 || sN > 59.99));
   inputs.jarak.classList.toggle("invalid", j !== "" && (isNaN(jN) || jN < 0));
+  $("target").classList.toggle("invalid", !!(d || m || s || j) && !$("target").value.trim());
 
   $("errMsg").textContent = msg;
   updatePreview();
@@ -491,7 +537,7 @@ function updateSaveButton() {
   const button = $("saveButton");
   button.textContent = saving ? "Menyimpan..." : currentEditId ? "Simpan Perubahan" : "Simpan Data";
   button.classList.toggle("is-saving", saving);
-  button.disabled = saving || !formValid();
+  button.disabled = saving || !stationReady || !formValid();
 }
 
 function formValid() {
@@ -500,19 +546,27 @@ function formValid() {
   return inputs.d.value !== "" && !isNaN(dN) && dN >= 0 && dN <= 360 &&
          inputs.m.value !== "" && !isNaN(mN) && mN >= 0 && mN <= 59 &&
          inputs.s.value !== "" && !isNaN(sN) && sN >= 0 && sN <= 59.99 &&
-         inputs.jarak.value !== "" && !isNaN(jN) && jN >= 0;
+      !(dN === 360 && (mN !== 0 || sN !== 0)) &&
+      inputs.jarak.value !== "" && !isNaN(jN) && jN >= 0 &&
+      $("target").value.trim() !== "";
 }
 
 function updatePreview() {
   const dN = parseNum(inputs.d.value), mN = parseNum(inputs.m.value), sN = parseNum(inputs.s.value);
   if (isNaN(dN) || isNaN(mN) || isNaN(sN)) {
-    $("preview").innerHTML = "0° 0' 0\" &nbsp;·&nbsp; <span class=\"dec\">0.000000</span>";
+    $("preview").innerHTML = "Azimut &nbsp;·&nbsp; <span class=\"dec\">0.000000°</span><br><span class=\"hint\">X akhir — &nbsp; Y akhir —</span>";
     return;
   }
   const dec = dN + mN / 60 + sN / 3600;
-  const sStr = sN % 1 === 0 ? String(sN) : sN.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  const station = currentEditId && currentEntryStation ? currentEntryStation : activeStation;
+  const distance = parseNum(inputs.jarak.value);
+  const radians = dec * Math.PI / 180;
+  const xEnd = station && !isNaN(distance) ? Number(station.x) + distance * Math.sin(radians) : NaN;
+  const yEnd = station && !isNaN(distance) ? Number(station.y) + distance * Math.cos(radians) : NaN;
   $("preview").innerHTML =
-    dN + "° " + mN + "' " + sStr + "\" &nbsp;·&nbsp; <span class=\"dec\">" + dec.toFixed(6) + "</span>";
+    "Azimut &nbsp;·&nbsp; <span class=\"dec\">" + dec.toFixed(6) + "°</span><br>" +
+    "<span class=\"hint\">X akhir " + (isNaN(xEnd) ? "—" : xEnd.toFixed(3)) +
+    " &nbsp;·&nbsp; Y akhir " + (isNaN(yEnd) ? "—" : yEnd.toFixed(3)) + "</span>";
 }
 
 /* ================= ANTREAN & PENGIRIMAN ================= */
@@ -533,6 +587,74 @@ function saveHistory(history) {
 
 function getQueue() { return loadJSON(QUEUE_KEY, []); }
 
+function isValidStation(station) {
+  return !!station && typeof station.name === "string" && station.name.trim() !== "" &&
+    Number.isFinite(Number(station.x)) && Number.isFinite(Number(station.y));
+}
+
+function initStationSetup() {
+  activeStation = loadJSON(STATION_KEY, null);
+  if (isValidStation(activeStation)) {
+    $("stationName").value = activeStation.name;
+    $("stationX").value = String(activeStation.x);
+    $("stationY").value = String(activeStation.y);
+    stationReady = true;
+    $("stationState").textContent = "Aktif: " + activeStation.name;
+    $("stationState").classList.add("ready");
+  }
+  $("entryFields").disabled = !stationReady;
+}
+
+function saveStationSetup() {
+  const station = {
+    name: $("stationName").value.trim(),
+    x: parseNum($("stationX").value),
+    y: parseNum($("stationY").value),
+  };
+  const invalid = !isValidStation(station);
+  $("stationName").classList.toggle("invalid", !station.name);
+  $("stationX").classList.toggle("invalid", !Number.isFinite(station.x));
+  $("stationY").classList.toggle("invalid", !Number.isFinite(station.y));
+  if (invalid) {
+    $("stationState").textContent = "Isi nama titik dan koordinat X/Y dengan angka yang valid.";
+    $("stationState").classList.remove("ready");
+    return;
+  }
+  activeStation = station;
+  stationReady = true;
+  try { localStorage.setItem(STATION_KEY, JSON.stringify(station)); } catch (e) { /* abaikan */ }
+  $("entryFields").disabled = false;
+  $("stationState").textContent = "Aktif: " + station.name;
+  $("stationState").classList.add("ready");
+  $("stationName").classList.remove("invalid");
+  $("stationX").classList.remove("invalid");
+  $("stationY").classList.remove("invalid");
+  validate();
+  toast("Pengaturan alat tersimpan");
+}
+
+function measurementValues() {
+  const station = currentEditId && currentEntryStation ? currentEntryStation : activeStation;
+  const d = parseNum(inputs.d.value), m = parseNum(inputs.m.value);
+  const s = parseNum(inputs.s.value), distance = parseNum(inputs.jarak.value);
+  const azimuth = d + m / 60 + s / 3600;
+  const radians = azimuth * Math.PI / 180;
+  return {
+    titikBerdiri: station.name,
+    titikBidik: $("target").value.trim(),
+    keterangan: $("ket").value.trim(),
+    xAwal: Number(station.x),
+    yAwal: Number(station.y),
+    derajat: d,
+    menit: m,
+    detik: s,
+    azimutDesimal: +azimuth.toFixed(6),
+    jarak: distance,
+    xAkhir: Number(station.x) + distance * Math.sin(radians),
+    yAkhir: Number(station.y) + distance * Math.cos(radians),
+  };
+}
+
 function updateNetBadge() {
   const badge = $("netBadge");
   const q = getQueue();
@@ -549,10 +671,22 @@ function updateNetBadge() {
 }
 
 async function kirim(entry) {
+  const payload = entry.action === "delete"
+    ? { action: "delete", id: entry.id }
+    : {
+        ...entry,
+        action: "upsert",
+        ...(entry.titikBerdiri ? {} : {
+          titikBerdiri: activeStation && activeStation.name,
+          titikBidik: entry.titikBidik || entry.keterangan || "(target lama)",
+          xAwal: activeStation && Number(activeStation.x),
+          yAwal: activeStation && Number(activeStation.y),
+        }),
+      };
   const res = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(entry),
+    body: JSON.stringify(payload),
   });
   let data;
   try { data = await res.json(); } catch (e) { throw new Error("Respons bukan JSON"); }
@@ -567,16 +701,25 @@ async function processQueue() {
   if (!queue.length) return;
   processingQueue = true;
   const terkirim = new Set();
+  const upsertTerkirim = new Set();
   try {
     for (const entry of queue) {
       try {
         await kirim(entry);
         terkirim.add(entry.id);
+        if (entry.action !== "delete") upsertTerkirim.add(entry.id);
       } catch (e) {
         // Tetap di antrean untuk percobaan berikutnya.
       }
     }
     saveQueue(getQueue().filter((entry) => !terkirim.has(entry.id)));
+    if (upsertTerkirim.size) {
+      const history = loadJSON(HIST_KEY, []);
+      history.forEach((entry) => {
+        if (upsertTerkirim.has(entry.id)) entry.serverSynced = true;
+      });
+      saveHistory(history);
+    }
     updateNetBadge();
     renderHistory();
     return { sent: terkirim.size, pending: getQueue().length };
@@ -592,14 +735,7 @@ async function saveEntry() {
   updateSaveButton();
   const dN = parseNum(inputs.d.value), mN = parseNum(inputs.m.value),
         sN = parseNum(inputs.s.value), jN = parseNum(inputs.jarak.value);
-  const values = {
-    keterangan: $("ket").value.trim(),
-    derajat: dN,
-    menit: mN,
-    detik: sN,
-    desimal: +(dN + mN / 60 + sN / 3600).toFixed(6),
-    jarak: jN,
-  };
+  const values = measurementValues();
   try {
     const history = loadJSON(HIST_KEY, []);
     if (currentEditId) {
@@ -611,26 +747,23 @@ async function saveEntry() {
       }
       const queue = getQueue();
       const queueIndex = queue.findIndex((entry) => entry.id === currentEditId);
-      const updated = { ...history[index], ...values, waktu: new Date().toISOString() };
-      if (queueIndex >= 0) {
-        queue[queueIndex] = updated;
-        saveQueue(queue);
-      } else {
-        updated.localEdit = true;
-      }
+      const updated = {
+        ...history[index],
+        ...values,
+        waktu: new Date().toISOString(),
+        serverSynced: history[index].serverSynced === true || queueIndex < 0,
+      };
+      if (queueIndex >= 0) queue[queueIndex] = updated;
+      else queue.push(updated);
+      saveQueue(queue);
       history[index] = updated;
       saveHistory(history);
-      const editedLabel = updated.keterangan || "(tanpa keterangan)";
       cancelEditing();
       resetForm();
       renderHistory();
-      if (queueIndex >= 0) {
-        if (navigator.onLine) await processQueue();
-        const stillPending = getQueue().some((entry) => entry.id === updated.id);
-        toast(stillPending ? "Edit disimpan, status Pending" : "Edit terkirim");
-      } else {
-        toast("Edit " + editedLabel + " tersimpan di perangkat; data spreadsheet belum berubah");
-      }
+      if (navigator.onLine) await processQueue();
+      const stillPending = getQueue().some((entry) => entry.id === updated.id);
+      toast(stillPending ? "Edit disimpan, menunggu terkirim" : "Edit terkirim ke spreadsheet");
     } else {
       const entry = { id: crypto.randomUUID(), waktu: new Date().toISOString(), ...values };
       history.unshift(entry);
@@ -653,6 +786,7 @@ async function saveEntry() {
 }
 
 function resetForm() {
+  $("target").value = "";
   $("ket").value = "";
   COLS.forEach((col) => { inputs[col].value = ""; inputs[col].classList.remove("invalid"); });
   Object.keys(wheels).forEach((col) => setWheelPosition(col, 0));
@@ -662,6 +796,7 @@ function resetForm() {
 
 function cancelEditing() {
   currentEditId = null;
+  currentEntryStation = null;
   $("formCard").classList.remove("editing");
   $("formMode").hidden = true;
   updateSaveButton();
@@ -669,34 +804,41 @@ function cancelEditing() {
 
 function editEntry(entry) {
   currentEditId = entry.id;
+  currentEntryStation = isValidStation({ name: entry.titikBerdiri, x: entry.xAwal, y: entry.yAwal })
+    ? { name: entry.titikBerdiri, x: entry.xAwal, y: entry.yAwal }
+    : activeStation;
   $("formCard").classList.add("editing");
   $("formMode").hidden = false;
-  $("formModeText").textContent = "Edit data: " + (entry.keterangan || "(tanpa keterangan)");
+  $("formModeText").textContent = "Edit target: " + (entry.titikBidik || "(target lama)") +
+    " · berdiri di " + (currentEntryStation ? currentEntryStation.name : "(setup aktif)");
+  $("target").value = entry.titikBidik || "";
   $("ket").value = entry.keterangan || "";
   inputs.d.value = String(entry.derajat);
   inputs.m.value = String(entry.menit);
   inputs.s.value = String(entry.detik);
   inputs.jarak.value = String(entry.jarak);
-  Object.keys(wheels).forEach((col) => setWheelPosition(col, entry[col]));
+  setWheelPosition("d", entry.derajat);
+  setWheelPosition("m", entry.menit);
   validate();
   $("formCard").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function deleteEntry(entry) {
-  const pending = getQueue().some((queued) => queued.id === entry.id);
-  const promptText = pending
-    ? "Hapus data ini dari riwayat dan antrean pengiriman?"
-    : "Hapus dari riwayat perangkat? Data yang sudah terkirim tetap ada di spreadsheet.";
-  if (!confirm(promptText)) return;
+async function deleteEntry(entry) {
+  const queue = getQueue();
+  if (!confirm("Hapus data ini dari riwayat perangkat dan spreadsheet?")) return;
   saveHistory(loadJSON(HIST_KEY, []).filter((item) => item.id !== entry.id));
-  saveQueue(getQueue().filter((item) => item.id !== entry.id));
+  const remainingQueue = queue.filter((item) => item.id !== entry.id);
+  remainingQueue.push({ id: entry.id, action: "delete" });
+  saveQueue(remainingQueue);
   if (currentEditId === entry.id) {
     cancelEditing();
     resetForm();
   }
   renderHistory();
   updateNetBadge();
-  toast(pending ? "Data dihapus dari antrean" : "Riwayat dihapus dari perangkat");
+  if (navigator.onLine) await processQueue();
+  const deletePending = getQueue().some((item) => item.id === entry.id && item.action === "delete");
+  toast(deletePending ? "Hapus menunggu koneksi" : "Data dihapus");
 }
 
 /* ================= RIWAYAT ================= */
@@ -709,16 +851,17 @@ function renderHistory() {
     const li = document.createElement("li");
     const info = document.createElement("div");
     info.className = "info";
-    const az = h.derajat + h.menit / 60 + h.detik / 3600;
+    const az = h.azimutDesimal ?? (h.derajat + h.menit / 60 + h.detik / 3600);
     info.innerHTML =
       "<div class=\"ket\"></div>" +
-      "<div class=\"sub\">" + az.toFixed(3) + "° · " + h.jarak + " m · " +
+      "<div class=\"sub\">" + (h.titikBidik || "(target lama)") + " · " + az.toFixed(3) + "° · " + h.jarak + " m · " +
       new Date(h.waktu).toLocaleString("id-ID") + "</div>";
-    info.querySelector(".ket").textContent = h.keterangan || "(tanpa keterangan)";
+    info.querySelector(".ket").textContent = (h.titikBerdiri || "") + " → " + (h.titikBidik || "(target lama)") +
+      (h.keterangan ? " · " + h.keterangan : "");
     const pending = getQueue().some((entry) => entry.id === h.id);
     const status = document.createElement("span");
-    status.className = "status " + (pending ? "pending" : h.localEdit ? "local" : "sent");
-    status.textContent = pending ? "Pending" : h.localEdit ? "Edit lokal" : "Terkirim";
+    status.className = "status " + (pending ? "pending" : "sent");
+    status.textContent = pending ? "Pending" : "Terkirim";
     info.appendChild(status);
     const actions = document.createElement("div");
     actions.className = "actions";
@@ -778,10 +921,14 @@ requestWakeLock();
 /* ================= INIT ================= */
 renderChips();
 renderWheels();
+initStationSetup();
 renderHistory();
 validate();
 updateNetBadge();
 $("saveButton").addEventListener("click", saveEntry);
+$("saveStation").addEventListener("click", saveStationSetup);
+$("target").addEventListener("input", validate);
+inputs.jarak.addEventListener("input", updatePreview);
 $("cancelEdit").addEventListener("click", () => { cancelEditing(); resetForm(); validate(); });
 </script>
 </body>
