@@ -1,10 +1,11 @@
 /* Service Worker — cache-first untuk aset statis */
-const CACHE = "catatan-ukur-v2";
+const CACHE = "catatan-ukur-v4";
 const ASSETS = [
   "./",
   "./index.html",
+  "./styles.css",
+  "./app.js",
   "./manifest.json",
-  "./icon.svg",
   "./icon.svg"
 ];
 
